@@ -19,6 +19,12 @@
                 <div class="spinner"></div>
                 <span>Loading calendar...</span>
             </div>
+            <div class="manual-url" id="manualUrl" style="display: none;">
+                <h3>Manual Calendar URL</h3>
+                <p>If automatic loading fails, try using a CORS proxy:</p>
+                <input type="text" id="proxyUrl" placeholder="https://cors-anywhere.herokuapp.com/https://canvas.illinois.edu/feeds/calendars/..." />
+                <button id="loadWithProxy" class="btn-secondary">Load with Proxy</button>
+            </div>
         </div>
 
         <div class="calendar-info" id="calendarInfo" style="display: none;">

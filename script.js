@@ -1,7 +1,8 @@
 // Canvas Calendar Reader
 class CanvasCalendarReader {
     constructor() {
-        this.calendarUrl = 'https://canvas.illinois.edu/feeds/calendars/user_XPkQO3PypASsI5uWjRFvFpdRhTncK0airtJ6Hvuu.ics';
+        this.originalCalendarUrl = 'https://canvas.illinois.edu/feeds/calendars/user_XPkQO3PypASsI5uWjRFvFpdRhTncK0airtJ6Hvuu.ics';
+        this.calendarUrl = this.originalCalendarUrl;
         this.tasks = [];
         this.initializeEventListeners();
     }
@@ -9,6 +10,10 @@ class CanvasCalendarReader {
     initializeEventListeners() {
         document.getElementById('loadCalendar').addEventListener('click', () => {
             this.loadCalendar();
+        });
+        
+        document.getElementById('loadWithProxy').addEventListener('click', () => {
+            this.loadWithManualProxy();
         });
     }
 
@@ -26,13 +31,8 @@ class CanvasCalendarReader {
         tasksContainer.innerHTML = '';
 
         try {
-            // Fetch the calendar data
-            const response = await fetch(this.calendarUrl);
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-            
-            const icsData = await response.text();
+            // Try multiple methods to fetch the calendar data
+            const icsData = await this.fetchCalendarData();
             
             // Parse the ICS data
             this.tasks = this.parseICSData(icsData);
@@ -64,8 +64,124 @@ class CanvasCalendarReader {
             console.error('Error loading calendar:', error);
             loadingElement.style.display = 'none';
             errorElement.style.display = 'block';
+            document.getElementById('manualUrl').style.display = 'block';
+            document.getElementById('proxyUrl').value = `https://cors-anywhere.herokuapp.com/${this.originalCalendarUrl}`;
+            document.getElementById('errorMessage').innerHTML = 
+                `<strong>Failed to load calendar:</strong> ${error.message}<br><br>
+                <strong>Possible solutions:</strong><br>
+                1. Try the manual proxy option below<br>
+                2. Use a different CORS proxy service<br>
+                3. Check if your Canvas calendar URL is correct and accessible<br>
+                4. Try accessing the calendar URL directly in a new tab to verify it works`;
+        }
+    }
+
+    async fetchCalendarData() {
+        // List of CORS proxies to try
+        const corsProxies = [
+            'https://cors-anywhere.herokuapp.com/',
+            'https://api.allorigins.win/raw?url=',
+            'https://corsproxy.io/?',
+            'https://thingproxy.freeboard.io/fetch/'
+        ];
+
+        // First try direct access
+        try {
+            const response = await fetch(this.originalCalendarUrl);
+            if (response.ok) {
+                return await response.text();
+            }
+        } catch (error) {
+            console.log('Direct access failed, trying CORS proxies...');
+        }
+
+        // Try each CORS proxy
+        for (const proxy of corsProxies) {
+            try {
+                const proxyUrl = proxy + encodeURIComponent(this.originalCalendarUrl);
+                console.log(`Trying proxy: ${proxy}`);
+                
+                const response = await fetch(proxyUrl);
+                if (response.ok) {
+                    const data = await response.text();
+                    // Check if we got valid ICS data
+                    if (data.includes('BEGIN:VCALENDAR') && data.includes('VEVENT')) {
+                        return data;
+                    }
+                }
+            } catch (error) {
+                console.log(`Proxy ${proxy} failed:`, error.message);
+                continue;
+            }
+        }
+
+        throw new Error('All CORS proxies failed. The calendar URL may be inaccessible or the proxies may be down.');
+    }
+
+    async loadWithManualProxy() {
+        const proxyUrl = document.getElementById('proxyUrl').value.trim();
+        if (!proxyUrl) {
+            alert('Please enter a proxy URL');
+            return;
+        }
+
+        const loadingElement = document.getElementById('loading');
+        const errorElement = document.getElementById('error');
+        const tasksContainer = document.getElementById('tasksContainer');
+        const noTasksElement = document.getElementById('noTasks');
+        const calendarInfo = document.getElementById('calendarInfo');
+        const dateRange = document.getElementById('dateRange');
+
+        // Show loading state
+        loadingElement.style.display = 'flex';
+        errorElement.style.display = 'none';
+        tasksContainer.innerHTML = '';
+
+        try {
+            const response = await fetch(proxyUrl);
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            
+            const icsData = await response.text();
+            
+            // Check if we got valid ICS data
+            if (!icsData.includes('BEGIN:VCALENDAR') || !icsData.includes('VEVENT')) {
+                throw new Error('Invalid calendar data received. Please check the proxy URL.');
+            }
+            
+            // Parse the ICS data
+            this.tasks = this.parseICSData(icsData);
+            
+            // Filter tasks for next two weeks
+            const upcomingTasks = this.filterUpcomingTasks(this.tasks);
+            
+            // Hide loading state
+            loadingElement.style.display = 'none';
+            
+            if (upcomingTasks.length === 0) {
+                noTasksElement.innerHTML = '<p>No upcoming tasks in the next two weeks</p>';
+                noTasksElement.style.display = 'block';
+                calendarInfo.style.display = 'none';
+            } else {
+                noTasksElement.style.display = 'none';
+                calendarInfo.style.display = 'block';
+                
+                // Update date range display
+                const today = new Date();
+                const twoWeeksFromNow = new Date(today.getTime() + (14 * 24 * 60 * 60 * 1000));
+                dateRange.textContent = `${this.formatDate(today)} - ${this.formatDate(twoWeeksFromNow)}`;
+                
+                // Display tasks
+                this.displayTasks(upcomingTasks);
+            }
+            
+        } catch (error) {
+            console.error('Error loading calendar with proxy:', error);
+            loadingElement.style.display = 'none';
+            errorElement.style.display = 'block';
             document.getElementById('errorMessage').textContent = 
-                `Failed to load calendar: ${error.message}. This might be due to CORS restrictions. Please try using a CORS proxy or hosting this on a server.`;
+                `Failed to load calendar with proxy: ${error.message}`;
         }
     }
 
