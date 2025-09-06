@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Canvas Calendar Viewer</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>📅 Canvas Calendar</h1>
+            <p>View your upcoming tasks for the next two weeks</p>
+        </header>
+
+        <div class="controls">
+            <button id="loadCalendar" class="btn-primary">Load Calendar</button>
+            <div class="loading" id="loading" style="display: none;">
+                <div class="spinner"></div>
+                <span>Loading calendar...</span>
+            </div>
+        </div>
+
+        <div class="calendar-info" id="calendarInfo" style="display: none;">
+            <h2>📋 Upcoming Tasks (Next 2 Weeks)</h2>
+            <div class="date-range" id="dateRange"></div>
+        </div>
+
+        <div class="tasks-container" id="tasksContainer">
+            <div class="no-tasks" id="noTasks">
+                <p>Click "Load Calendar" to view your upcoming tasks</p>
+            </div>
+        </div>
+
+        <div class="error" id="error" style="display: none;">
+            <h3>❌ Error</h3>
+            <p id="errorMessage"></p>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
